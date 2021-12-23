@@ -1,0 +1,1 @@
+web: gunicorn kickstarter3i:APP -t 120
