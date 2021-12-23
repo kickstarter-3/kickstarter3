@@ -3,6 +3,7 @@ from kears.models import load_model
 
 model = keras.models.load_model("../kickstarter3/data/my_model.h5")
 
+
 model.compile(model.compile(loss='binary_crossentropy',
               optimizer='adam',
               metrics=['mse']))
