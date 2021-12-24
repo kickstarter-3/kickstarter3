@@ -1,54 +1,61 @@
-import requests
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-
-
-'''
-help predict how successful a kickstarter campaign will be based
-on the monetary goal, description, campaign length, or catagories.
-'''
+from flask import Flask, render_template, request
+# from .recommendation import *
+# import pickle
+import pandas as pd
+import numpy as np
+# import keras
+# from keras.models import load_model
+import pickle
 
 def create_app():
-    app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_kickstart.sqlite3'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    DB = SQLAlchemy()
-    DB.init_app(app)
-    class Start_Up(DB.Model):
-        id = DB.Column(DB.BigInteger, primary_key=True)
-        name = DB.Column(DB.String(30), nullable=False)
-        goal = DB.Column(DB.BigInteger, nullable=False)
+    # initializes our app
+    APP = Flask(__name__)
 
-        def __repr__(self):
-            return f'ID: {self.id} | Name: {self.name} | Goal: {self.goal}'
-    @app.before_first_request
-    def create_tables():
-        DB.create_all()
-    @app.route('/')
-    def root():
-        return str([(b.name, b.goal) for b in Start_Up.query.all()])
-    @app.route('/refresh')
-    def refresh():
-        DB.drop_all()
-        DB.create_all()
-        return 'Data has been refreshed.'
-    @app.route('/add')
-    def add_one():
-        # have to put everything into lists or dicts and 
-        # return at end else just print to terminal
+    @APP.route('/')
+    def form():
+        return render_template('base.html')
+    @APP.route('/data/', methods=['GET', 'POST'])
+    def data():
 
-        q = Start_Up.query.all()
-        names = [f'biz{x}' for x in range(1,91)]
-        for i, name in enumerate(names):
-            biz = Start_Up(id=i, name=name, goal=i*2+1)
-            if not Start_Up.query.get(biz.id):
-                DB.session.add(biz)
-                        
-        DB.session.commit()
-        return 'Names have been added'
-    return app
+        if request.method == 'POST':
+            # Get form data
+            name = request.form.get('name')
+            blurb = request.form.get('blurb', 'default')
+            country = request.form.get('country', 'default')
+            backers_count = request.form.get('backers_count', 'default')
 
-# if __name__ =='__main__':
-# create_app()
+            prediction = preprocessDataAndPredict(name, blurb, country,
+                                 backers_count)
 
+            # print(prediction[0])
+            return render_template('data.html', prediction=prediction[0])
 
+    def preprocessDataAndPredict(name, blurb, country, backers_count):
+
+        # test_data = (blurb)
+        test_data = (name, blurb, country, backers_count)
+        # print(test_data)
+
+        test_data = np.array(test_data)
+        dftest = pd.DataFrame(test_data).T
+        dftest.columns = ['name', 'blurb', 'country', 'backers_count']
+        print(dftest)
+        print(dftest.shape)
+
+        # test_data = test_data.reshape(1, -1)
+        # print(test_data)
+
+        #file = open("model.pkl", "wb")
+        model = pickle.load(
+            open('model_knn', 'rb'))
+        # model = pickle.load(
+        #     open('Kickstarter2/kickstarter/kick_model(1)', 'rb'))
+
+        prediction = model.predict(dftest)
+
+        # print(prediction)
+
+        return prediction
+
+        # return prediction
+    return APP
